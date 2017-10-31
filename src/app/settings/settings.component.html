@@ -1,0 +1,30 @@
+<div class="well">
+    <h4>First turn</h4>
+    <mat-radio-group name="starter" [(ngModel)]="checkedStarter">  
+        <mat-radio-button 
+            name="computerRadioButton"
+            value="computer">Computer</mat-radio-button>
+        <br />
+        <mat-radio-button 
+            name="playerRadioButton" 
+            value="player">Player</mat-radio-button>
+    </mat-radio-group>
+</div>
+<div class="well">
+        <h4>Game mode</h4>
+        <mat-radio-group name="mode" [(ngModel)]="checkedMode">  
+            <mat-radio-button 
+                name="computerRadioButton"
+                value="dumb">Dumb AI</mat-radio-button>
+            <br />
+            <mat-radio-button 
+                name="playerRadioButton" 
+                value="unbeatable"
+                disabled="true">Unbeatable AI</mat-radio-button>
+        </mat-radio-group>
+    </div>
+<div class="well">
+    <button mat-raised-button color="primary" (click)="onStart()">Start</button>
+    <button mat-raised-button color="warn" (click)="onReset()">Reset</button>
+</div>
+
