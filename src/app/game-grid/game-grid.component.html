@@ -1,16 +1,23 @@
-<p class="bg-primary">{{ currentStatus }}</p>
 <div *ngIf="!(tiles.length === 0)">
     <mat-grid-list  [cols]="columns" rowHeight="100px" gutterSize="15px">
-        <mat-grid-tile *ngFor="let tile of tiles">
+        <mat-grid-tile *ngFor="let tile of tiles;let i = index">
             <img *ngIf="tile.state === 'O'" class="img-responsive" src="/assets/img/O.jpg" alt="O" /> 
             <img *ngIf="tile.state === 'X'" class="img-responsive" src="/assets/img/X.jpg" alt="X" />
-            <button *ngIf="tile.state === 'default'" mat-button (click)="onTileClick(tile.index)"></button>         
-        </mat-grid-tile> -->
+            <button *ngIf="tile.state === 'default'" 
+                    [id]="'tile'+i"
+                    (click)="onTileClick(tile.index)" 
+                    mat-button 
+                    matTooltip="Hint"
+                    [matTooltipDisabled]="true"
+                    matTooltipPosition="above"
+                    #tile
+                    ></button>     
+        </mat-grid-tile>
     </mat-grid-list>
 </div>
 <div *ngIf="tiles.length === 0">
     <h3 class="bg-danger">No grid created</h3>
 </div>
 <div>
-    <textarea rows="10" disabled="disabled" #comment></textarea>
+    <app-game-log></app-game-log>
 </div>

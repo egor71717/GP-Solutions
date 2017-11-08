@@ -11,19 +11,31 @@
     </mat-radio-group>
 </div>
 <div class="well">
-        <h4>Game mode</h4>
-        <mat-radio-group name="mode" [(ngModel)]="checkedMode">  
-            <mat-radio-button 
-                name="computerRadioButton"
-                value="dumb">Dumb AI</mat-radio-button>
-            <br />
-            <mat-radio-button 
-                name="playerRadioButton" 
-                value="unbeatable"
-                disabled="true">Unbeatable AI</mat-radio-button>
-        </mat-radio-group>
-    </div>
+    <h4>Game mode</h4>
+    <mat-radio-group name="mode" [(ngModel)]="checkedMode">  
+        <mat-radio-button 
+             name="dumbAIRadioButton"
+             value="dumb">Dumb AI</mat-radio-button>
+        <br />
+        <mat-radio-button 
+            name="unbeatableAIRadioButton" 
+            value="unbeatable"
+            disabled="true">Unbeatable AI</mat-radio-button>
+    </mat-radio-group>
+</div>
 <div class="well">
+    <h4>Hints</h4>
+    <mat-radio-group name="hints" [(ngModel)]="checkedHints">  
+        <mat-radio-button 
+             name="hintsOnRadioButton"
+             value="on">On</mat-radio-button>
+        <br />
+        <mat-radio-button 
+            name="hintsOffRadioButton" 
+            value="off">Off</mat-radio-button>
+    </mat-radio-group>
+</div>
+<div class="well btn-group">
     <button mat-raised-button color="primary" (click)="onStart()">Start</button>
     <button mat-raised-button color="warn" (click)="onReset()">Reset</button>
 </div>

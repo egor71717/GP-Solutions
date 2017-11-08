@@ -6,14 +6,17 @@ import { AppComponent } from './app.component';
 import { MaterialModule } from './material.module';
 import { GameGridComponent } from './game-grid/game-grid.component';
 import { SettingsComponent } from './settings/settings.component';
-import { TicTacToeService } from './tic_tac_toe.service';
+import { TicTacToeService } from './tic-tac-toe.service';
 import { FormsModule } from '@angular/forms';
+import { GameLogService } from './game-log.service';
+import { GameLogComponent } from './game-log/game-log.component';
 
 
 @NgModule({
   declarations: [
     AppComponent,
     GameGridComponent,
+    GameLogComponent,
     SettingsComponent
   ],
   imports: [
@@ -22,7 +25,7 @@ import { FormsModule } from '@angular/forms';
     MaterialModule,
     FormsModule
   ],
-  providers: [TicTacToeService],
+  providers: [TicTacToeService, GameLogService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
