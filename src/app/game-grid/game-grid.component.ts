@@ -1,8 +1,12 @@
-import { Component, OnInit, OnDestroy, HostListener, Renderer2, AfterViewInit, ViewChildren, QueryList } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, AfterViewInit, ViewChildren, QueryList } from '@angular/core';
 import { Tile } from './tile.model';
 import { TicTacToeService } from '../tic-tac-toe.service';
 import { Subscription } from 'rxjs/Subscription';
 import { MatGridTile, MatTooltip } from '@angular/material';
+import { LocalstorageService } from '../localstorage.service';
+import { Game } from '../game.model';
+import { GameLogService } from '../game-log.service';
+import { Message, MessageType } from '../message.model';
 
 @Component({
   selector: 'app-game-grid',
@@ -10,17 +14,20 @@ import { MatGridTile, MatTooltip } from '@angular/material';
   styleUrls: ['./game-grid.component.css']
 })
 export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
+  startedReplay: boolean;
   focusedTileId: number;
   columns: number;
   tiles: Tile[];
   emptyTileIds: number[];
   gridSubscription : Subscription;
   hintSubscription : Subscription;
+  
   //@ViewChildren('') popups: QueryList<any>;
 
-  constructor(private ticTacToeService: TicTacToeService, private renderer: Renderer2) { }
+  constructor(private ticTacToeService: TicTacToeService, private localstorageService : LocalstorageService, private gameLogService: GameLogService) { }
 
   ngOnInit() {
+    this.startedReplay = false;
     this.tiles = [];
     this.emptyTileIds = [];
     this.columns = this.ticTacToeService.getColumnsCount();
@@ -42,6 +49,36 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     this.gridSubscription.unsubscribe();
     this.hintSubscription.unsubscribe();
+    this.localstorageService.forceFinish();
+  }
+
+  replaySavedGames(){
+    //this.localstorageService.clear();
+    console.log(localStorage);
+    if(localStorage.length === 0){
+      this.gameLogService.pushMessage(new Message("--Nothing to Replay.", MessageType.Warning));
+      return;
+    }
+    this.localstorageService.forceFinish();
+    this.startedReplay = true;
+    let games = this.localstorageService.getGames();
+    let i = 0;
+    let gameReplayedSubscription = this.ticTacToeService.gameReplayed.subscribe(
+      () => {
+        if(i < games.length)
+          this.replayGame(games[i++]);
+        else {
+          this.gameLogService.pushMessage(new Message('--Replay finished.', MessageType.Success));
+          this.startedReplay = false;
+          //gameReplayedSubscription.unsubscribe();
+        }
+      }
+    );
+    this.replayGame(games[i++]);
+  }
+
+  replayGame(game: Game){
+    this.ticTacToeService.replayGame(game, 1000);
   }
 
   onTileClick(clickedTileIndex: number){
@@ -85,6 +122,8 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
 
   //does not nork in Edge
   @HostListener('document:keydown', ['$event']) keydown(event: KeyboardEvent){
+    if(this.tiles.length === 0)
+      return true;
     let key = event.key;
     if(key === "ArrowLeft"){
       this.focusPreviousTile();

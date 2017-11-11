@@ -35,6 +35,18 @@
             value="off">Off</mat-radio-button>
     </mat-radio-group>
 </div>
+<div class="well">
+    <h4>Localstorage</h4>
+    <mat-radio-group name="localstorage" [(ngModel)]="checkedLocalstorage">  
+        <mat-radio-button 
+             name="SaveOnRadioButton"
+             value="on">On</mat-radio-button>
+        <br />
+        <mat-radio-button 
+            name="SaveOffRadioButton" 
+            value="off">Off</mat-radio-button>
+    </mat-radio-group>
+</div>
 <div class="well btn-group">
     <button mat-raised-button color="primary" (click)="onStart()">Start</button>
     <button mat-raised-button color="warn" (click)="onReset()">Reset</button>

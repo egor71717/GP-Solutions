@@ -3,10 +3,17 @@ import { Tile } from "./game-grid/tile.model";
 import { Injectable } from "@angular/core";
 import { GameLogService } from "./game-log.service";
 import { Message, MessageType } from "./message.model";
+import { LocalstorageService } from "./localstorage.service";
+import { Game } from "./game.model";
+import { Observable } from "rxjs/Observable";
+import { Subscription } from "rxjs/Subscription";
+import 'rxjs/add/operator/delay';
+import { Move } from "./move.model";
 
 @Injectable()
 export class TicTacToeService{ 
 
+    private saveToLocalstorage: boolean;
     private storedGames = [];
     private gameStarted : boolean;
     private gridIsReseted: boolean;
@@ -19,8 +26,11 @@ export class TicTacToeService{
     private tiles : Tile[];
     gridChanged: Subject<Tile[]> = new Subject();
     hintPushed: Subject<number> = new Subject();
+    gameReplayed: Subject<{}> = new Subject();
+    replaySubscription: Subscription;
+    
 
-    constructor(private gameLogService: GameLogService) {
+    constructor(private gameLogService: GameLogService, private localstorageService: LocalstorageService) {
         this.gameStarted = false;
         this.gridIsReseted = true;
         this.hintsOn = true;
@@ -32,7 +42,7 @@ export class TicTacToeService{
         this.tiles = [];
     }
 
-    startGame(startsFirst : string, columns : number, mode : string, hints: string){
+    startGame(startsFirst : string, columns : number, mode : string, hints: string, localstorage: string){
         this.mode = mode;
         this.columns = columns;
         this.turnNumber = 1;
@@ -40,6 +50,7 @@ export class TicTacToeService{
         this.gameStarted = true;
         this.initializeGrid();
         this.hintsOn = (hints === "on");
+        this.saveToLocalstorage = (localstorage === 'on');
         this.gameLogService.pushMessage(new Message("--Game started.", MessageType.Success))
 
         if(startsFirst === "player")
@@ -64,7 +75,7 @@ export class TicTacToeService{
         this.gridChanged.next(this.tiles);
     }
 
-    getEmptyGrid(): Tile[] {
+    public getEmptyGrid(): Tile[] {
         let grid = []
         let tilesCount = Math.pow(this.columns, 2);
         for(let i = 0; i < tilesCount; ++i){
@@ -74,11 +85,11 @@ export class TicTacToeService{
         
     }
 
-    getColumnsCount(){
+    public getColumnsCount(){
         return this.columns
     }
 
-    resetGrid(){
+    public resetGrid(){
         if(!this.gridIsReseted){
             this.gameStarted = false;
             this.tiles = [];
@@ -88,58 +99,125 @@ export class TicTacToeService{
         }
     }
 
-    makeTurn(clickedTileIndex: number){
-        if(!this.gameStarted)
+    public makeTurn(clickedTileIndex: number){
+        if(!this.gameStarted){
             this.gameLogService.pushMessage(new Message("--Game did not start!", MessageType.Error) );
+        } 
         else{
             this.tiles[clickedTileIndex].state = this.playersSign;
+            if(this.saveToLocalstorage){
+                this.localstorageService.uploadMooveToStorage(clickedTileIndex, true);
+            }
             this.gridChanged.next(this.tiles);
             this.turnNumber++;
-            if(this.turnNumber >= 5 && this.checkForVictory(this.playersSign)){
-                this.gameStarted = false;
-                this.gameLogService.pushMessage(new Message("--You won!", MessageType.Success));
-            }
-            else if(this.turnNumber === Math.pow(this.columns, 2) + 1)
-                this.gameLogService.pushMessage(new Message('--It is draw!', MessageType.Warning));
-            else
+            if(!this.gameIsFinished(true)){
                 this.computerTurn();
+            }   
+            else if(this.saveToLocalstorage){
+                this.localstorageService.finishSaving();
+                this.gameStarted = false;
+            }    
         }
+    }
+    public replayGame(game: Game, delay: number){
+        this.resetGrid();
+        this.initializeGrid();
+        if(game.moves[0].actor === "player"){
+            this.playersSign = 'X';
+            this.computerSign = 'O'
+        }
+        else{
+            this.playersSign = 'O';
+            this.computerSign = 'X'
+        }
+        this.gameLogService.pushMessage(new Message('--Replaying game Id: #'+ game.Id));
+        let delayedObservable = Observable.create(
+            (observer)=>{
+                let i = 0; 
+            setInterval(() => {
+                if(i < game.moves.length){
+                    observer.next(game.moves[i]);
+                    i++;
+                } 
+                else{
+                    setTimeout(()=>observer.complete(), delay*2)
+                }
+            }, delay )
+        }); 
+        //observable.delay does not work
+        this.replaySubscription = delayedObservable.subscribe(
+            data => { this.replayMove(data) } ,
+            () => {},
+            () => { 
+                this.gameReplayed.next({});
+                //this.replaySubscription.unsubscribe();
+            }
+        );
+    }
+
+    public replayMove(move: Move){
+        this.turnNumber = move.number;
+        this.gameLogService.pushMessage(new Message('-turn '+move.number+'; index '+move.activatedIndex+move.actor ));
+        this.tiles[move.activatedIndex].state = move.actor === 'player' ? this.playersSign : this.computerSign;
+        this.gridChanged.next(this.tiles);
+        this.gameIsFinished(move.actor === "player");
     }
 
     computerTurn() {
+        let turnIndex;
         if(this.mode === 'dumb'){
-            this.dumbAITurn();
+            turnIndex = this.dumbAITurn();
+        }
+        if(this.saveToLocalstorage){
+            this.localstorageService.uploadMooveToStorage(turnIndex, false);
         }
         this.gridChanged.next(this.tiles);
         this.gameLogService.pushMessage(new Message('-Turn '+this.turnNumber+': Computers turn.'));
         this.turnNumber++;
-        if(this.turnNumber >= 5 && this.checkForVictory(this.computerSign)){
-            this.gameStarted = false;
-            this.gameLogService.pushMessage(new Message("--Computer won", MessageType.Error));
-        }
-        else if(this.turnNumber === Math.pow(this.columns, 2) + 1)
-            this.gameLogService.pushMessage(new Message('--It is draw!', MessageType.Warning));
-        else{
+        if(!this.gameIsFinished(false)){
             this.gameLogService.pushMessage(new Message('-Turn '+this.turnNumber+': It is your turn.'));
-            if(this.hintsOn){
-                this.hintPushed.next(this.dumbHint());
-            }      
+            // if(this.hintsOn){
+            //     this.hintPushed.next(this.dumbHint());
+            // }   
+        }
+        else if(this.saveToLocalstorage){
+            this.localstorageService.finishSaving();
+            this.gameStarted = false;
         }
     }
 
-    private dumbAITurn(){
+    private gameIsFinished(isPlayer: boolean): boolean{
+        let sign = isPlayer ? this.playersSign : this.computerSign
+        if(this.turnNumber >= 5 && this.checkForVictory(sign)){
+            if(isPlayer){
+                this.gameLogService.pushMessage(new Message("--Player won!", MessageType.Success));
+            }
+            else{
+                this.gameLogService.pushMessage(new Message("--Computer won", MessageType.Error));
+            }
+            return true;
+        }
+        else if(this.turnNumber === Math.pow(this.columns, 2) + 1){
+            this.gameLogService.pushMessage(new Message('--It is draw!', MessageType.Warning));
+            return true;
+        }
+        return false;
+    }
+
+    private dumbAITurn(): number{
         let emptyTiles = this.getEmptyTiles();
         let turnIndex = Math.floor(Math.random() * emptyTiles.length);
-        emptyTiles[turnIndex].state = this.computerSign;   
+        emptyTiles[turnIndex].state = this.computerSign;
+        return emptyTiles[turnIndex].index;   
     }
 
-    private dumbHint(){
+    private dumbHint(): number{
         let emptyTiles = this.getEmptyTiles();
         let turnIndex = Math.floor(Math.random() * emptyTiles.length);
         return turnIndex;
     }
 
-    private getEmptyTiles(){
+    private getEmptyTiles(): Tile[]{
         let emptyTiles = [];
         for(let i = 0, j = 0; i < this.tiles.length; ++i )
         {
@@ -234,7 +312,7 @@ export class TicTacToeService{
         }
         return rowTiles;
     }
-
+    
     private getLeftDiagonal(): Tile[]{
         let leftDiagonal = [];
         for(let i = 0; i < this.tiles.length; i+=this.columns+1)

@@ -10,7 +10,8 @@ export class SettingsComponent implements OnInit {
   checkedStarter: string;
   checkedMode: string;
   checkedHints: string;
-  gameStarted: boolean;
+  checkedLocalstorage: string;
+
 
   constructor(private ticTacToeService : TicTacToeService) { }
 
@@ -18,11 +19,12 @@ export class SettingsComponent implements OnInit {
   ngOnInit() {
     this.checkedStarter = "computer";
     this.checkedMode = "dumb";
-    this.checkedHints = "on"
+    this.checkedHints = "on";
+    this.checkedLocalstorage = "on";
   }
 
   onStart(){
-    this.ticTacToeService.startGame(this.checkedStarter, 3, this.checkedMode, this.checkedHints);
+    this.ticTacToeService.startGame(this.checkedStarter, 3, this.checkedMode, this.checkedHints, this.checkedLocalstorage);
   }
 
   onReset(){

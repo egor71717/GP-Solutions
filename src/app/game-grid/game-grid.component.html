@@ -5,7 +5,7 @@
             <img *ngIf="tile.state === 'X'" class="img-responsive" src="/assets/img/X.jpg" alt="X" />
             <button *ngIf="tile.state === 'default'" 
                     [id]="'tile'+i"
-                    (click)="onTileClick(tile.index)" 
+                    (click)="onTileClick(i)" 
                     mat-button 
                     matTooltip="Hint"
                     [matTooltipDisabled]="true"
@@ -18,6 +18,7 @@
 <div *ngIf="tiles.length === 0">
     <h3 class="bg-danger">No grid created</h3>
 </div>
-<div>
+<div *ngIf="!(tiles.length === 0)">
     <app-game-log></app-game-log>
 </div>
+<button class="btn" (click)="replaySavedGames()" [disabled]="startedReplay">replay</button>

@@ -10,6 +10,7 @@ import { TicTacToeService } from './tic-tac-toe.service';
 import { FormsModule } from '@angular/forms';
 import { GameLogService } from './game-log.service';
 import { GameLogComponent } from './game-log/game-log.component';
+import { LocalstorageService } from './localstorage.service';
 
 
 @NgModule({
@@ -25,7 +26,7 @@ import { GameLogComponent } from './game-log/game-log.component';
     MaterialModule,
     FormsModule
   ],
-  providers: [TicTacToeService, GameLogService],
+  providers: [TicTacToeService, GameLogService, LocalstorageService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
