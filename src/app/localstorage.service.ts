@@ -3,32 +3,42 @@ import { Subscription } from "rxjs/Subscription";
 import { Game } from "./game.model";
 import { GameGridComponent } from "./game-grid/game-grid.component";
 import { Move } from "./move.model";
+import { BehaviorSubject } from "rxjs/BehaviorSubject";
+import { Observable } from "rxjs/Observable";
+import 'rxjs/add/observable/combineLatest';
+import 'rxjs/add/operator/do';
+import { isNull } from "util";
 
 export class LocalstorageService{
-    private firstGameId: number;
-    private lastGameId: number;
-    private storedGamesCount: number;
+    // private firstGameId: number;
+    // private lastGameId: number;
+    // private storedGamesCount: number;
     private thisGameId: number;
     private thisTurnNumber: number;
     private isSaving: boolean;
+ 
+    private _thisTurnNumber : BehaviorSubject<number>; 
+    private _firstGameId: BehaviorSubject<number>; 
+    private _lastGameId: BehaviorSubject<number>; 
+    public storedGamesCountObservable: Observable<number>; 
 
     constructor(){
-        if(localStorage.length !== 0){
-
-            this.firstGameId = this.getFirstGameId();
-            this.lastGameId = this.getLastGameId();
-            this.storedGamesCount = this.lastGameId - this.firstGameId + 1;
-            this.thisGameId = this.lastGameId + 1;
-        }
-        else{
-            this.storedGamesCount = 0;
-            this.thisGameId = 0;
-        }
+        this._firstGameId = new BehaviorSubject(this.getFirstGameId());
+        this._lastGameId = new BehaviorSubject(this.getLastGameId());
+        this.storedGamesCountObservable = Observable.combineLatest(this._firstGameId.asObservable(), this._lastGameId.asObservable(),
+        (firstGameId: number,lastGameId:number) => { 
+            // console.log('firstgameId: '+firstGameId+'\nlastgameId: '+lastGameId)
+            if(isNull(firstGameId) || isNull(lastGameId))
+                return 0;
+            else
+                return lastGameId - firstGameId + 1
+        });
+        this._lastGameId.subscribe(data => this.thisGameId = isNull(data) ? 0 : data + 1);
         this.thisTurnNumber = 0;
-        this.isSaving = false;
+        this.isSaving = false;   
     }
 
-    private getFirstGameId(){
+    private getFirstGameId(){ 
         if (localStorage.length === 0){
             return null;
         }
@@ -39,7 +49,7 @@ export class LocalstorageService{
             if(id < minId){
                 minId = id;
             }
-        }
+        } 
         return minId;
     }
 
@@ -69,7 +79,7 @@ export class LocalstorageService{
 
     public getGames(): Game[]{
         let games = [];
-        for(let i = this.firstGameId; i <= this.lastGameId; ++i){
+        for(let i = this._firstGameId.getValue(); i <= this._lastGameId.getValue(); ++i){
             games.push(this.getGame(i));
         }
         return games;
@@ -92,16 +102,15 @@ export class LocalstorageService{
         this.isSaving = false;
         this.thisGameId++;
         this.thisTurnNumber = 0;
-        this.storedGamesCount++;
+        this._firstGameId.next(this.getFirstGameId())
+        this._lastGameId.next(this.getLastGameId());
     }
 
     //removes unfinished games 
     public forceFinish(){
-        if(this.isSaving){
-            this.undoLastUploads();
-            this.isSaving = false;
-            this.thisTurnNumber = 0;
-        }
+        this.undoLastUploads();
+        this.isSaving = false;
+        this.thisTurnNumber = 0;
     }
 
     private undoLastUploads(){
@@ -117,5 +126,7 @@ export class LocalstorageService{
 
     public clear(){
         localStorage.clear();
+        this._firstGameId.next(this.getFirstGameId());
+        this._lastGameId.next(this.getLastGameId());
     }
 }

@@ -37,6 +37,7 @@
 </div>
 <div class="well">
     <h4>Localstorage</h4>
+    <p>games count: {{ storedGamesCount }}</p>
     <mat-radio-group name="localstorage" [(ngModel)]="checkedLocalstorage">  
         <mat-radio-button 
              name="SaveOnRadioButton"
@@ -46,9 +47,14 @@
             name="SaveOffRadioButton" 
             value="off">Off</mat-radio-button>
     </mat-radio-group>
+    <div>
+        <button *ngIf="!startedReplay" mat-raised-button color="primary" (click)="replaySavedGames()" [disabled]="storedGamesCount === 0">replay</button>
+        <button *ngIf="startedReplay" mat-raised-button color="primary" (click)="stopReplay()" >stop</button>    
+        <button mat-raised-button color="warn" (click)="clear()" [disabled]="storedGamesCount === 0">Clear</button>
+    </div>
 </div>
 <div class="well btn-group">
-    <button mat-raised-button color="primary" (click)="onStart()">Start</button>
-    <button mat-raised-button color="warn" (click)="onReset()">Reset</button>
+    <button mat-raised-button color="primary" (click)="startGame()">Start</button>
+    <button mat-raised-button color="warn" (click)="reset()">Reset</button>
 </div>
 

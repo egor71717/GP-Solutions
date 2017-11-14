@@ -16,6 +16,7 @@ export class TicTacToeService{
     private saveToLocalstorage: boolean;
     private storedGames = [];
     private gameStarted : boolean;
+    private replayStarted: boolean;
     private gridIsReseted: boolean;
     private hintsOn: boolean;
     private playersSign : string;
@@ -29,9 +30,9 @@ export class TicTacToeService{
     gameReplayed: Subject<{}> = new Subject();
     replaySubscription: Subscription;
     
-
     constructor(private gameLogService: GameLogService, private localstorageService: LocalstorageService) {
         this.gameStarted = false;
+        this.replayStarted = false;
         this.gridIsReseted = true;
         this.hintsOn = true;
         this.playersSign = 'not chosen';
@@ -82,7 +83,6 @@ export class TicTacToeService{
             grid.push(new Tile( i, 'default' ));
         }
         return grid;
-        
     }
 
     public getColumnsCount(){
@@ -90,6 +90,7 @@ export class TicTacToeService{
     }
 
     public resetGrid(){
+        this.stopReplay();
         if(!this.gridIsReseted){
             this.gameStarted = false;
             this.tiles = [];
@@ -119,9 +120,11 @@ export class TicTacToeService{
             }    
         }
     }
+
     public replayGame(game: Game, delay: number){
         this.resetGrid();
         this.initializeGrid();
+        this.replayStarted = true;
         if(game.moves[0].actor === "player"){
             this.playersSign = 'X';
             this.computerSign = 'O'
@@ -134,9 +137,9 @@ export class TicTacToeService{
         let delayedObservable = Observable.create(
             (observer)=>{
                 let i = 0; 
-            setInterval(() => {
-                if(i < game.moves.length){
-                    observer.next(game.moves[i]);
+                setInterval(() => {
+                    if(i < game.moves.length){
+                        observer.next(game.moves[i]);
                     i++;
                 } 
                 else{
@@ -144,15 +147,15 @@ export class TicTacToeService{
                 }
             }, delay )
         }); 
-        //observable.delay does not work
         this.replaySubscription = delayedObservable.subscribe(
             data => { this.replayMove(data) } ,
-            () => {},
+            error => { console.error(error) },
             () => { 
+                this.replayStarted = false;
                 this.gameReplayed.next({});
-                //this.replaySubscription.unsubscribe();
             }
         );
+        this.replayStarted = true;
     }
 
     public replayMove(move: Move){
@@ -163,7 +166,18 @@ export class TicTacToeService{
         this.gameIsFinished(move.actor === "player");
     }
 
-    computerTurn() {
+    public stopReplay(){
+        if(this.replayStarted){
+            this.replaySubscription.unsubscribe();
+            this.replayStarted = false;
+            this.gameLogService.pushMessage(new Message('--Replay stopped'));
+        }
+        else{
+            this.gameLogService.pushMessage(new Message('--Replay not started', MessageType.Error))
+        }
+    }
+
+    computerTurn(){
         let turnIndex;
         if(this.mode === 'dumb'){
             turnIndex = this.dumbAITurn();
@@ -229,7 +243,7 @@ export class TicTacToeService{
         return emptyTiles;
     }
 
-    getEmptyTileIds(){
+    public getEmptyTileIds(){
         let emptyTileIds = [];
         for(let i = 0, j = 0; i < this.tiles.length; ++i )
         {
@@ -312,7 +326,7 @@ export class TicTacToeService{
         }
         return rowTiles;
     }
-    
+
     private getLeftDiagonal(): Tile[]{
         let leftDiagonal = [];
         for(let i = 0; i < this.tiles.length; i+=this.columns+1)

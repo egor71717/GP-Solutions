@@ -27,7 +27,6 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(private ticTacToeService: TicTacToeService, private localstorageService : LocalstorageService, private gameLogService: GameLogService) { }
 
   ngOnInit() {
-    this.startedReplay = false;
     this.tiles = [];
     this.emptyTileIds = [];
     this.columns = this.ticTacToeService.getColumnsCount();
@@ -50,35 +49,6 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
     this.gridSubscription.unsubscribe();
     this.hintSubscription.unsubscribe();
     this.localstorageService.forceFinish();
-  }
-
-  replaySavedGames(){
-    //this.localstorageService.clear();
-    console.log(localStorage);
-    if(localStorage.length === 0){
-      this.gameLogService.pushMessage(new Message("--Nothing to Replay.", MessageType.Warning));
-      return;
-    }
-    this.localstorageService.forceFinish();
-    this.startedReplay = true;
-    let games = this.localstorageService.getGames();
-    let i = 0;
-    let gameReplayedSubscription = this.ticTacToeService.gameReplayed.subscribe(
-      () => {
-        if(i < games.length)
-          this.replayGame(games[i++]);
-        else {
-          this.gameLogService.pushMessage(new Message('--Replay finished.', MessageType.Success));
-          this.startedReplay = false;
-          //gameReplayedSubscription.unsubscribe();
-        }
-      }
-    );
-    this.replayGame(games[i++]);
-  }
-
-  replayGame(game: Game){
-    this.ticTacToeService.replayGame(game, 1000);
   }
 
   onTileClick(clickedTileIndex: number){

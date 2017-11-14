@@ -10,6 +10,7 @@
                     matTooltip="Hint"
                     [matTooltipDisabled]="true"
                     matTooltipPosition="above"
+                    [disabled]="startedReplay"
                     #tile
                     ></button>     
         </mat-grid-tile>
@@ -21,4 +22,5 @@
 <div *ngIf="!(tiles.length === 0)">
     <app-game-log></app-game-log>
 </div>
-<button class="btn" (click)="replaySavedGames()" [disabled]="startedReplay">replay</button>
+
+
