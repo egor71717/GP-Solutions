@@ -1,11 +1,11 @@
 import { Component, OnInit, OnDestroy, HostListener, AfterViewInit, ViewChildren, QueryList } from '@angular/core';
 import { Tile } from './tile.model';
-import { TicTacToeService } from '../tic-tac-toe.service';
 import { Subscription } from 'rxjs/Subscription';
 import { MatGridTile, MatTooltip } from '@angular/material';
-import { LocalstorageService } from '../localstorage.service';
 import { Game } from '../game.model';
-import { GameLogService } from '../game-log.service';
+import { TicTacToeService } from '../services/tic-tac-toe.service';
+import { GameLogService } from '../services/game-log.service';
+import { LocalstorageService } from '../services/localstorage.service';
 import { Message, MessageType } from '../message.model';
 
 @Component({
@@ -21,6 +21,7 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
   emptyTileIds: number[];
   gridSubscription : Subscription;
   hintSubscription : Subscription;
+  columnsSubscription: Subscription;
   
   //@ViewChildren('') popups: QueryList<any>;
 
@@ -29,8 +30,8 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit() {
     this.tiles = [];
     this.emptyTileIds = [];
-    this.columns = this.ticTacToeService.getColumnsCount();
-    this.gridSubscription = this.ticTacToeService.gridChanged.subscribe(
+    this.columnsSubscription = this.ticTacToeService.columnsObservable.subscribe(data => this.columns = data);
+    this.gridSubscription = this.ticTacToeService.gridObservable.subscribe(
       (updatedGrid: Tile[]) => { 
         if(updatedGrid.length === 0)
           this.focusedTileId = null;
@@ -48,6 +49,7 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     this.gridSubscription.unsubscribe();
     this.hintSubscription.unsubscribe();
+    this.columnsSubscription.unsubscribe();
     this.localstorageService.forceFinish();
   }
 

@@ -1,19 +1,20 @@
 import { Subject } from "rxjs/Subject"
-import { Tile } from "./game-grid/tile.model";
 import { Injectable } from "@angular/core";
 import { GameLogService } from "./game-log.service";
-import { Message, MessageType } from "./message.model";
+import { Message, MessageType } from "../message.model";
 import { LocalstorageService } from "./localstorage.service";
-import { Game } from "./game.model";
+import { Game } from "../game.model";
 import { Observable } from "rxjs/Observable";
 import { Subscription } from "rxjs/Subscription";
 import 'rxjs/add/operator/delay';
-import { Move } from "./move.model";
+import { Move } from "../move.model";
+import { BehaviorSubject } from "rxjs/BehaviorSubject";
+import { Tile } from "../game-grid/tile.model";
 
 @Injectable()
 export class TicTacToeService{ 
 
-    private saveToLocalstorage: boolean;
+    private isSavingToLocastorage: boolean;
     private storedGames = [];
     private gameStarted : boolean;
     private replayStarted: boolean;
@@ -22,11 +23,13 @@ export class TicTacToeService{
     private playersSign : string;
     private computerSign : string;
     private mode :string;
-    private columns : number;
     private turnNumber: number;
-    private tiles : Tile[];
-    gridChanged: Subject<Tile[]> = new Subject();
-    hintPushed: Subject<number> = new Subject();
+    private _columns : BehaviorSubject<number>;
+    columnsObservable: Observable<number>;
+    private _grid: BehaviorSubject<Tile[]>;
+    gridObservable: Observable<Tile[]>;
+    private _hint: Subject<number> = new Subject();
+    hintObservable: Observable<number> = this._hint.asObservable();
     gameReplayed: Subject<{}> = new Subject();
     replaySubscription: Subscription;
     
@@ -38,20 +41,22 @@ export class TicTacToeService{
         this.playersSign = 'not chosen';
         this.computerSign = 'not chosen';
         this.mode = 'not chosen';
-        this.columns = 3;
         this.turnNumber = 0;
-        this.tiles = [];
-    }
+        this._columns = new BehaviorSubject(3);
+        this.columnsObservable = this._columns.asObservable();
+        this._grid = new BehaviorSubject([]);
+        this.gridObservable = this._grid.asObservable();
+    }  
 
     startGame(startsFirst : string, columns : number, mode : string, hints: string, localstorage: string){
         this.mode = mode;
-        this.columns = columns;
+        this._columns.next(columns);
         this.turnNumber = 1;
         this.resetGrid();
         this.gameStarted = true;
         this.initializeGrid();
         this.hintsOn = (hints === "on");
-        this.saveToLocalstorage = (localstorage === 'on');
+        this.isSavingToLocastorage = (localstorage === 'on');
         this.gameLogService.pushMessage(new Message("--Game started.", MessageType.Success))
 
         if(startsFirst === "player")
@@ -71,32 +76,26 @@ export class TicTacToeService{
     }
 
     private initializeGrid(){
-        this.tiles = this.getEmptyGrid();
         this.gridIsReseted = false;
-        this.gridChanged.next(this.tiles);
+        this._grid.next(this.getEmptyGrid());
     }
 
     public getEmptyGrid(): Tile[] {
         let grid = []
-        let tilesCount = Math.pow(this.columns, 2);
+        let tilesCount = Math.pow(this._columns.getValue(), 2);
         for(let i = 0; i < tilesCount; ++i){
             grid.push(new Tile( i, 'default' ));
         }
         return grid;
     }
 
-    public getColumnsCount(){
-        return this.columns
-    }
-
     public resetGrid(){
         this.stopReplay();
         if(!this.gridIsReseted){
             this.gameStarted = false;
-            this.tiles = [];
             this.gameLogService.resetMessages();
             this.gameLogService.pushMessage(new Message("--Grid cleared."));
-            this.gridChanged.next(this.tiles);
+            this._grid.next([]);
         }
     }
 
@@ -105,26 +104,39 @@ export class TicTacToeService{
             this.gameLogService.pushMessage(new Message("--Game did not start!", MessageType.Error) );
         } 
         else{
-            this.tiles[clickedTileIndex].state = this.playersSign;
-            if(this.saveToLocalstorage){
-                this.localstorageService.uploadMooveToStorage(clickedTileIndex, true);
-            }
-            this.gridChanged.next(this.tiles);
+            let grid = this._grid.getValue();
+            grid[clickedTileIndex].state = this.playersSign;
+            this._grid.next(grid);
             this.turnNumber++;
-            if(!this.gameIsFinished(true)){
+            let isPlayersMove = true;
+            let isGameFinished = this.gameIsFinished(isPlayersMove);
+            this.saveToStorage(clickedTileIndex, isPlayersMove, isGameFinished);
+
+            if(!isGameFinished){
                 this.computerTurn();
             }   
-            else if(this.saveToLocalstorage){
-                this.localstorageService.finishSaving();
+            else {
                 this.gameStarted = false;
             }    
         }
     }
 
+    saveToStorage(moveIndex: number, isPlayersMove: boolean, isGameFinished: boolean){
+        if(this.isSavingToLocastorage){
+            this.localstorageService.uploadMooveToStorage(moveIndex, isPlayersMove, this._columns.getValue());
+            if(isGameFinished){
+                this.localstorageService.finishSaving();
+            }
+        }
+    }
+
     public replayGame(game: Game, delay: number){
+        (console.log('replaying game'+ game.Id))
         this.resetGrid();
+        this._columns.next(game.columns);
         this.initializeGrid();
         this.replayStarted = true;
+
         if(game.moves[0].actor === "player"){
             this.playersSign = 'X';
             this.computerSign = 'O'
@@ -133,6 +145,7 @@ export class TicTacToeService{
             this.playersSign = 'O';
             this.computerSign = 'X'
         }
+
         this.gameLogService.pushMessage(new Message('--Replaying game Id: #'+ game.Id));
         let delayedObservable = Observable.create(
             (observer)=>{
@@ -151,18 +164,22 @@ export class TicTacToeService{
             data => { this.replayMove(data) } ,
             error => { console.error(error) },
             () => { 
+                console.log('delayed observable completed');
                 this.replayStarted = false;
                 this.gameReplayed.next({});
+                this.gameReplayed.complete();
+                this.gameReplayed = new Subject();
             }
         );
         this.replayStarted = true;
     }
 
     public replayMove(move: Move){
+        let grid = this._grid.getValue();
         this.turnNumber = move.number;
         this.gameLogService.pushMessage(new Message('-turn '+move.number+'; index '+move.activatedIndex+move.actor ));
-        this.tiles[move.activatedIndex].state = move.actor === 'player' ? this.playersSign : this.computerSign;
-        this.gridChanged.next(this.tiles);
+        grid[move.activatedIndex].state = move.actor === 'player' ? this.playersSign : this.computerSign;
+        this._grid.next(grid);
         this.gameIsFinished(move.actor === "player");
     }
 
@@ -178,24 +195,27 @@ export class TicTacToeService{
     }
 
     computerTurn(){
-        let turnIndex;
-        if(this.mode === 'dumb'){
-            turnIndex = this.dumbAITurn();
-        }
-        if(this.saveToLocalstorage){
-            this.localstorageService.uploadMooveToStorage(turnIndex, false);
-        }
-        this.gridChanged.next(this.tiles);
         this.gameLogService.pushMessage(new Message('-Turn '+this.turnNumber+': Computers turn.'));
+        let moveIndex;
+        if(this.mode === 'dumb'){
+            moveIndex = this.dumbAITurn();
+        }
+        let grid = this._grid.getValue();
+        grid[moveIndex].state = this.computerSign;
+        this._grid.next(grid);
         this.turnNumber++;
-        if(!this.gameIsFinished(false)){
+        let isPlayersMove = false;
+        let isGameFinished = this.gameIsFinished(isPlayersMove);
+        this.saveToStorage(moveIndex, isPlayersMove, isGameFinished);
+
+        
+        if(!isGameFinished){
             this.gameLogService.pushMessage(new Message('-Turn '+this.turnNumber+': It is your turn.'));
             // if(this.hintsOn){
             //     this.hintPushed.next(this.dumbHint());
             // }   
         }
-        else if(this.saveToLocalstorage){
-            this.localstorageService.finishSaving();
+        else if(this.isSavingToLocastorage){
             this.gameStarted = false;
         }
     }
@@ -203,15 +223,15 @@ export class TicTacToeService{
     private gameIsFinished(isPlayer: boolean): boolean{
         let sign = isPlayer ? this.playersSign : this.computerSign
         if(this.turnNumber >= 5 && this.checkForVictory(sign)){
-            if(isPlayer){
+
+            if(isPlayer)
                 this.gameLogService.pushMessage(new Message("--Player won!", MessageType.Success));
-            }
-            else{
+            else
                 this.gameLogService.pushMessage(new Message("--Computer won", MessageType.Error));
-            }
+
             return true;
         }
-        else if(this.turnNumber === Math.pow(this.columns, 2) + 1){
+        else if(this.turnNumber === Math.pow(this._columns.getValue(), 2) + 1){
             this.gameLogService.pushMessage(new Message('--It is draw!', MessageType.Warning));
             return true;
         }
@@ -220,38 +240,33 @@ export class TicTacToeService{
 
     private dumbAITurn(): number{
         let emptyTiles = this.getEmptyTiles();
-        let turnIndex = Math.floor(Math.random() * emptyTiles.length);
-        emptyTiles[turnIndex].state = this.computerSign;
-        return emptyTiles[turnIndex].index;   
-    }
 
-    private dumbHint(): number{
-        let emptyTiles = this.getEmptyTiles();
+        if(emptyTiles.length === 0)
+            return null;
+
         let turnIndex = Math.floor(Math.random() * emptyTiles.length);
-        return turnIndex;
+        return emptyTiles[turnIndex].index;
     }
 
     private getEmptyTiles(): Tile[]{
         let emptyTiles = [];
-        for(let i = 0, j = 0; i < this.tiles.length; ++i )
-        {
-            if(this.tiles[i].state === 'default'){
-                emptyTiles[j] = this.tiles[i];
-                ++j;
-            }
-        }
+        let grid = this._grid.getValue();
+
+        for(let i = 0; i < grid.length; ++i)
+            if(grid[i].state === 'default')
+                emptyTiles.push(grid[i]);
+
         return emptyTiles;
     }
 
     public getEmptyTileIds(){
         let emptyTileIds = [];
-        for(let i = 0, j = 0; i < this.tiles.length; ++i )
-        {
-            if(this.tiles[i].state === 'default'){
-                emptyTileIds[j] = i;
-                ++j;
-            }
-        }
+        let grid = this._grid.getValue();
+
+        for(let i = 0; i < grid.length; ++i )
+            if(grid[i].state === 'default')
+                emptyTileIds.push(i);
+
         return emptyTileIds;
     }
 
@@ -283,61 +298,70 @@ export class TicTacToeService{
                 return true;
         }
         return false;
-
     }
 
     private getColumns(): Tile[][]{
         let columnsArray = [];
-        for(let i = 0; i < this.columns; ++i)
+        for(let i = 0; i < this._columns.getValue(); ++i)
             columnsArray.push(this.getColumn(i));
         return columnsArray;
     }
 
     private getColumn(index: number): Tile[]{
-        if(index >= this.columns || index < 0)
+        if(index >= this._columns.getValue() || index < 0)
             throw new Error('wrong params for getColumn()');
 
-        let stepColumnElementsIndexes = this.columns;
+        let grid = this._grid.getValue();
+        let step = this._columns.getValue();
         let columnTiles = [];
-        for(let i = index, j=0; i < this.tiles.length; i+=stepColumnElementsIndexes){
-            columnTiles[j] = this.tiles[i];
-            ++j;
-        }
+
+        for(let i = index; i < grid.length; i += step)
+            columnTiles.push(grid[i]);
+
         return columnTiles;
     }
 
     private getRows(): Tile[][]{
         let rowsArray = [];
-        for(let i = 0; i < this.columns; ++i)
+        for(let i = 0; i < this._columns.getValue(); ++i)
             rowsArray.push(this.getRow(i));
         return rowsArray;
     }
 
     private getRow(index: number): Tile[]{
-        let rows = this.columns;
+        let rows = this._columns.getValue();
         if(index >= rows || index < 0)
             throw new Error('wrong params for getRow()');
 
+        let grid = this._grid.getValue();
         let rowTiles = [];
-        let i = index * this.columns; //first element index
-        while(rowTiles.length < rows){
-            rowTiles.push(this.tiles[i]);
-            ++i;
-        }
+        let first = index * rows; //first element index
+
+        for(let i = first; rowTiles.length < rows; ++i)
+            rowTiles.push(grid[i]);
+
         return rowTiles;
     }
 
     private getLeftDiagonal(): Tile[]{
         let leftDiagonal = [];
-        for(let i = 0; i < this.tiles.length; i+=this.columns+1)
-            leftDiagonal.push(this.tiles[i]);
+        let grid = this._grid.getValue();
+        let step = this._columns.getValue() + 1;
+
+        for(let i = 0; i < grid.length; i += step)
+            leftDiagonal.push(grid[i]);
+
         return leftDiagonal;
     }
 
     private getRightDiagonal(): Tile[]{
         let rightDiagonal = [];
-        for(let i = this.columns-1; i < this.tiles.length; i+=this.columns-1)
-        rightDiagonal.push(this.tiles[i]);
+        let grid = this._grid.getValue();
+        let step = this._columns.getValue() - 1;
+
+        for(let i = step; i < grid.length; i += step)
+            rightDiagonal.push(grid[i]);
+
         return rightDiagonal;
     }
 

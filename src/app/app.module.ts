@@ -6,11 +6,11 @@ import { AppComponent } from './app.component';
 import { MaterialModule } from './material.module';
 import { GameGridComponent } from './game-grid/game-grid.component';
 import { SettingsComponent } from './settings/settings.component';
-import { TicTacToeService } from './tic-tac-toe.service';
 import { FormsModule } from '@angular/forms';
-import { GameLogService } from './game-log.service';
 import { GameLogComponent } from './game-log/game-log.component';
-import { LocalstorageService } from './localstorage.service';
+import { TicTacToeService } from './services/tic-tac-toe.service';
+import { GameLogService } from './services/game-log.service';
+import { LocalstorageService } from './services/localstorage.service';
 
 
 @NgModule({

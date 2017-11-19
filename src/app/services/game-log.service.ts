@@ -1,7 +1,7 @@
 import { TicTacToeService } from "./tic-tac-toe.service";
 import { Injectable } from "@angular/core";
 import { Subject } from "rxjs/Subject";
-import { Message } from "./message.model";
+import { Message } from "../message.model";
 import { Subscription } from "rxjs/Subscription";
 
 @Injectable()

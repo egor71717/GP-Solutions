@@ -1,8 +1,8 @@
 import { Subject } from "rxjs/Subject";
 import { Subscription } from "rxjs/Subscription";
-import { Game } from "./game.model";
-import { GameGridComponent } from "./game-grid/game-grid.component";
-import { Move } from "./move.model";
+import { Game } from "../game.model";
+import { GameGridComponent } from "../game-grid/game-grid.component";
+import { Move } from "../move.model";
 import { BehaviorSubject } from "rxjs/BehaviorSubject";
 import { Observable } from "rxjs/Observable";
 import 'rxjs/add/observable/combineLatest';
@@ -10,9 +10,6 @@ import 'rxjs/add/operator/do';
 import { isNull } from "util";
 
 export class LocalstorageService{
-    // private firstGameId: number;
-    // private lastGameId: number;
-    // private storedGamesCount: number;
     private thisGameId: number;
     private thisTurnNumber: number;
     private isSaving: boolean;
@@ -68,7 +65,9 @@ export class LocalstorageService{
         return maxId;
     }
 
-    public uploadMooveToStorage(activatedTileId: number, isPlayer: boolean){
+    public uploadMooveToStorage(activatedTileId: number, isPlayer: boolean, columns: number){
+        if(!this.isSaving)
+            localStorage.setItem('game_' + this.thisGameId,"cols_"+ columns )
         this.isSaving = true;
         let key = this.thisGameId + "_" + this.thisTurnNumber;
         let data = isPlayer ? 'player':'computer';
@@ -86,7 +85,9 @@ export class LocalstorageService{
     }
 
     private getGame(gameId: number): Game{
-        let game = new Game(gameId, []);
+        let columns = parseInt(localStorage.getItem("game_" + gameId).split('_')[1]);
+        let game = new Game(gameId, columns, []);
+        //game.moves
         let i = 0;
         let mooveString; 
         while(mooveString = localStorage.getItem(gameId+'_'+i)){
@@ -122,6 +123,7 @@ export class LocalstorageService{
         while(key !== this.thisGameId+'_'+(lastMooveIndex+1)){
             localStorage.removeItem(key);
         }
+        localStorage.removeItem("game_"+ this.thisGameId)
     }
 
     public clear(){

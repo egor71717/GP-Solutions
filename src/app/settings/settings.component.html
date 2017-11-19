@@ -53,8 +53,22 @@
         <button mat-raised-button color="warn" (click)="clear()" [disabled]="storedGamesCount === 0">Clear</button>
     </div>
 </div>
-<div class="well btn-group">
-    <button mat-raised-button color="primary" (click)="startGame()">Start</button>
-    <button mat-raised-button color="warn" (click)="reset()">Reset</button>
+<div class="well">
+    <div>
+        <label for="columns">Columns</label>
+        <mat-slider 
+                    [max]="maxColumns"
+                    [min]="minColumns"
+                    [value]="columns"
+                    [thumb-label]="true"
+                    name = "columns"
+                    [(ngModel)]="columns"
+                    #slider>
+        </mat-slider>
+    </div>     
+    <div>
+        <button mat-raised-button color="primary" (click)="startGame()">Start</button>
+        <button mat-raised-button color="warn" (click)="reset()">Reset</button>
+    </div>
 </div>
 

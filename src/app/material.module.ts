@@ -1,5 +1,5 @@
 import { NgModule } from "@angular/core";
-import { MatRadioModule, MatGridListModule, MatButtonModule } from "@angular/material";
+import { MatRadioModule, MatGridListModule, MatButtonModule, MatSliderModule } from "@angular/material";
 import { MatTooltipModule } from '@angular/material/tooltip';
  
 @NgModule({
@@ -7,7 +7,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         MatRadioModule,
         MatGridListModule,
         MatButtonModule,
-        MatTooltipModule
+        MatTooltipModule,
+        MatSliderModule
     ]  
 })
 export class MaterialModule { }

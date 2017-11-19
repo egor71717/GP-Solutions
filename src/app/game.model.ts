@@ -1,5 +1,5 @@
 import { Move } from "./move.model";
 
 export class Game{
-    constructor(public Id: number, public moves: Move[]){ }
+    constructor(public Id: number,public columns: number, public moves: Move[]){ }
 }

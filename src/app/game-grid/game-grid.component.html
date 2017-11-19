@@ -19,8 +19,7 @@
 <div *ngIf="tiles.length === 0">
     <h3 class="bg-danger">No grid created</h3>
 </div>
-<div *ngIf="!(tiles.length === 0)">
-    <app-game-log></app-game-log>
-</div>
+<h3 class="text-primary" *ngIf="!(tiles.length === 0)">You can use arrow keys to navigate and and 'Enter' key to activate tile.</h3>
+<app-game-log></app-game-log>
 
 

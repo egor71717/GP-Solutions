@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { Subscription } from 'rxjs/Subscription';
-import { GameLogService } from '../game-log.service';
+import { GameLogService } from '../services/game-log.service';
 import { Message, MessageType } from '../message.model';
 
 @Component({
@@ -37,10 +37,12 @@ export class GameLogComponent implements OnInit, OnDestroy {
       () => { this.comments.nativeElement.value = ""; }
     );
   }
+
   ngOnDestroy() {
     this.messagePushedSubscription.unsubscribe();
     this.messagesResetedSubscription.unsubscribe();
   }
+  
   setMessageType(messageType: MessageType){
     this.isDefault = this.lastMessage.type === MessageType.Default;
     this.isError = this.lastMessage.type === MessageType.Error;
